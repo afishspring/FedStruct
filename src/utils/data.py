@@ -34,11 +34,11 @@ class Data:
         self.test_mask = masks[2]
 
     def add_masks(self, train_ratio=0.5, test_ratio=0.2):
-        num_nodes = self.num_nodes
+        # num_nodes = self.num_nodes
 
-        self.train_mask, self.val_mask, self.test_mask = Data.split_indices(
-            num_nodes, train_ratio, test_ratio
-        )
+        # self.train_mask, self.val_mask, self.test_mask = Data.split_indices(
+        #     num_nodes, train_ratio, test_ratio)
+        pass
 
     def split_indices(n, train_ratio=0.5, test_ratio=0.2):
         indices = torch.arange(n, device=dev)

@@ -12,7 +12,7 @@ import networkx as nx
 from torch_sparse import SparseTensor
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, roc_auc_score
 from torch_geometric.utils import degree, add_self_loops, scatter, remove_self_loops
 from dotenv import load_dotenv
 from sklearn.manifold import TSNE
@@ -88,6 +88,15 @@ def calc_f1_score(pred_y, y):
     )
     return f1score
 
+@torch.no_grad()
+def calc_auc(pred_y, y):
+    auc = roc_auc_score(
+        y.detach().cpu().numpy(),
+        pred_y.detach().cpu().numpy(),
+        average="micro",
+        multi_class="ovr",
+    )
+    return auc
 
 def calculate_average_precision(y_pred, y_true):
     """
@@ -485,17 +494,16 @@ def split_abar(abar: SparseTensor, nodes):
     num_nodes = abar.size()[0]
     # nodes = self.get_nodes().to(local_dev)
     num_nodes_i = len(nodes)
-    indices = torch.arange(num_nodes_i, dtype=torch.long, device=local_dev)
-    vals = torch.ones(num_nodes_i, dtype=torch.float32, device=local_dev)
+    indices = torch.arange(num_nodes_i, dtype=torch.long)
+    vals = torch.ones(num_nodes_i, dtype=torch.float32)
     P = torch.sparse_coo_tensor(
         torch.vstack([indices, nodes]),
         vals,
         (num_nodes_i, num_nodes),
-        device=local_dev,
     )
-    abar_i = torch.matmul(P, abar)
+    abar_i = torch.matmul(P, abar).to(local_dev)
     if dev != "cuda:0":
-        abar_i = abar_i.to_dense().to(dev)
+        abar_i = abar_i.to_dense()
     return abar_i
 
 
@@ -625,8 +633,12 @@ def calc_metrics(y, y_pred, mask=None, loss_function="cross_entropy"):
         f1_score_ = calc_f1_score(y_pred_masked.argmax(dim=1), y_masked)
     except:
         f1_score_ = 0
+    try:
+        auc = calc_auc(y_pred_masked.argmax(dim=1), y_masked)
+    except:
+        auc = 0
 
-    return loss, acc, f1_score_
+    return loss, acc, f1_score_, auc
 
 
 def lod2dol(list_of_dicts):

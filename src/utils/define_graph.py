@@ -13,6 +13,7 @@ from torch_geometric.datasets import (
     EllipticBitcoinTemporalDataset,
     PPI,
 )
+from ogb.nodeproppred import PygNodePropPredDataset
 
 from src import *
 from src.utils.graph import Graph
@@ -68,6 +69,8 @@ def define_graph(dataset_name=config.dataset.dataset_name, **kwargs):
             "LastFM",
         ]:
             dataset = JODIEDataset(root=root, name=dataset_name)
+        elif dataset_name in ["ogbn-arxiv", "ogbn-products"]:
+            dataset = PygNodePropPredDataset(name=dataset_name, root=root)
 
     # except:
     #     # LOGGER.info("dataset name does not exist!")
@@ -84,16 +87,39 @@ def define_graph(dataset_name=config.dataset.dataset_name, **kwargs):
         # edge_index = to_undirected(edge_index)
         # edge_index = remove_self_loops(edge_index)[0]
 
+        if dataset_name in ["ogbn-arxiv", "ogbn-products"]:
+            split_idx = dataset.get_idx_split()
+            train_idx = split_idx["train"]
+            val_idx = split_idx["valid"]
+            test_idx = split_idx["test"]
+            # 获取节点总数
+            num_nodes = dataset[0].num_nodes
+            
+            # === 核心转换代码：Index 转 Mask ===
+            # 1. 创建全 False 的布尔张量
+            train_mask = torch.zeros(num_nodes, dtype=torch.bool)
+            val_mask = torch.zeros(num_nodes, dtype=torch.bool)
+            test_mask = torch.zeros(num_nodes, dtype=torch.bool)
+            
+            # 2. 将对应索引位置设为 True
+            train_mask[train_idx] = True
+            val_mask[val_idx] = True
+            test_mask[test_idx] = True
+        else:
+            train_mask = data.get("train_mask", None)
+            val_mask = data.get("val_mask", None)
+            test_mask = data.get("test_mask", None)
+
         graph = Graph(
-            x=x.to(device),
-            y=data.y.to(device),
-            edge_index=edge_index.to(device),
-            node_ids=node_ids.to(device),
+            x=x,
+            y=data.y,
+            edge_index=edge_index,
+            node_ids=node_ids,
             keep_sfvs=True,
             dataset_name=dataset_name,
-            train_mask=data.get("train_mask", None),
-            val_mask=data.get("val_mask", None),
-            test_mask=data.get("test_mask", None),
+            train_mask=train_mask,
+            val_mask=val_mask,
+            test_mask=test_mask,
             time=data.get("t", None),
             num_classes=dataset.num_classes,
         )

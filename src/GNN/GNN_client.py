@@ -219,6 +219,7 @@ class GNNClient(Client):
             data_type=data_type,
             structure_type=structure_type,
         )
+        self.to_cuda()
         return super().train_local_model(
             epochs=epochs,
             log=log,

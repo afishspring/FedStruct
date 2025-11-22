@@ -98,7 +98,7 @@ def create_subgraps(graph: Graph, subgraph_node_ids: dict):
     subgraphs = []
     for community, subgraph_nodes in subgraph_node_ids.items():
         if not isinstance(subgraph_nodes, torch.Tensor):
-            node_ids = torch.tensor(subgraph_nodes, device=device)
+            node_ids = torch.tensor(subgraph_nodes)
         else:
             node_ids = subgraph_nodes
         edges = graph.original_edge_index
@@ -188,7 +188,7 @@ def random_assign(num_nodes, num_subgraphs):
     subgraph_id = np.random.choice(num_subgraphs, num_nodes, replace=True)
     subgraph_node_ids = {
         value: torch.tensor(
-            np.where(subgraph_id == value)[0], dtype=torch.int64, device=dev
+            np.where(subgraph_id == value)[0], dtype=torch.int64
         )
         for value in range(num_subgraphs)
     }
@@ -220,13 +220,15 @@ def kmeans_cut(X, num_subgraphs):
 
 
 def metis_cut(edge_index, num_nodes, num_subgraphs):
-    import metis
+    import pymetis
 
     edges = edge_index.T.tolist()
-    nx_graph = nx.Graph()
-    nx_graph.add_nodes_from(range(num_nodes))
-    nx_graph.add_edges_from(edges)
-    (edgecuts, community_map) = metis.part_graph(nx_graph, num_subgraphs)
+    adj = defaultdict(list)
+    for src, dst in edges:
+        adj[src].append(dst)
+        adj[dst].append(src)
+    adj_matrix = [list(adj[i]) for i in range(num_nodes)]
+    (edgecuts, community_map) = pymetis.part_graph(nparts=num_subgraphs, adjacency=adj_matrix)
     community_groups = create_community_groups(community_map=community_map)
 
     return community_groups
@@ -390,6 +392,10 @@ def fedGCN_partitioning(
         }
     elif method == "metis":
         subgraph_node_ids = metis_cut(graph.edge_index, graph.num_nodes, num_subgraphs)
+        subgraph_node_ids = {
+            key: torch.tensor(node_ids, dtype=torch.int64, device=dev)
+            for key, node_ids in subgraph_node_ids.items()
+        }
 
     subgraphs = create_comm_indexes(graph, subgraph_node_ids, num_hops=num_hops)
 

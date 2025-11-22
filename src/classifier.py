@@ -164,7 +164,7 @@ class Classifier:
     def calc_metrics(model, y, mask, metric="", loss_function="cross_entropy"):
         # model.eval()
         y_pred = model.get_prediction()
-        loss, acc, f1_score = calc_metrics(y, y_pred, mask, loss_function=loss_function)
+        loss, acc, f1_score, auc = calc_metrics(y, y_pred, mask, loss_function=loss_function)
 
         if metric == "acc":
             return (acc,)
@@ -172,6 +172,8 @@ class Classifier:
             return f1_score
         # elif metric == "ap":
         #     return f1_score
+        elif metric == "auc":
+            return (auc,)
         elif metric == "loss":
             return (loss.item(),)
         else:

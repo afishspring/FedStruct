@@ -21,6 +21,15 @@ class Client:
 
         self.classifier: Classifier = None
 
+    def to_cuda(self):
+        self.graph.node_ids = self.graph.node_ids.to(dev)
+        self.graph.x = self.graph.x.to(dev)
+        self.graph.y = self.graph.y.to(dev)
+        self.graph.edge_index = self.graph.edge_index.to(dev)
+        self.graph.train_mask = self.graph.train_mask.to(dev)
+        self.graph.val_mask = self.graph.val_mask.to(dev)
+        self.graph.test_mask = self.graph.test_mask.to(dev)
+
     def get_nodes(self):
         return self.graph.node_ids
 
@@ -105,6 +114,7 @@ class Client:
         for epoch in range(epochs):
             self.reset_model()
 
+            self.to_cuda()
             self.train()
             result = self.get_train_results(eval_=log)
             result["Epoch"] = epoch + 1
