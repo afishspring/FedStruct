@@ -131,8 +131,7 @@ class GNNServer(Server, GNNClient):
             model_type = f"FL {data_type} {smodel_type}-{fmodel_type} GA"
         else:
             model_type = f"Local {data_type} {smodel_type}-{fmodel_type} GA"
-
-        self.to_cuda()
+        
         return super().joint_train_g(
             epochs=epochs,
             FL=FL,

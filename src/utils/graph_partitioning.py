@@ -1,10 +1,11 @@
 from itertools import chain
 from collections import defaultdict
+import copy
 
 import torch
 import numpy as np
 import networkx as nx
-from sklearn.cluster import k_means
+from sklearn.cluster import k_means, KMeans
 from torch_geometric.utils import subgraph
 
 from src import *
@@ -233,6 +234,47 @@ def metis_cut(edge_index, num_nodes, num_subgraphs):
 
     return community_groups
 
+def metis_plus_cut(edge_index, num_nodes, num_subgraphs, num_classes, labels):
+    import pymetis
+
+    edges = edge_index.T.tolist()
+    adj = defaultdict(list)
+    for src, dst in edges:
+        adj[src].append(dst)
+        adj[dst].append(src)
+    adj_matrix = [list(adj[i]) for i in range(num_nodes)]
+
+    metis_num_coms = num_subgraphs * 10
+    communities = {com_id: {"nodes":[], "num_nodes":0, "label_distribution":[0] * num_classes} 
+                            for com_id in range(metis_num_coms)}
+    (edgecuts, community_map) = pymetis.part_graph(nparts=metis_num_coms, adjacency=adj_matrix)
+    for com_id in range(metis_num_coms):
+        com_indices = np.where(np.array(community_map) == com_id)[0]
+        com_indices = list(com_indices)
+        communities[com_id]["nodes"] = com_indices
+        communities[com_id]["num_nodes"] = len(com_indices)
+        for node in communities[com_id]["nodes"]:
+            label = copy.deepcopy(labels[node])
+            communities[com_id]["label_distribution"][label] += 1
+    
+    num_communities = len(communities)
+    clustering_data = np.zeros(shape=(num_communities, num_classes))
+    for com_id in communities.keys():
+        for class_i in range(num_classes):
+            clustering_data[com_id][class_i] = communities[com_id]["label_distribution"][class_i]
+        clustering_data[com_id, :] /= clustering_data[com_id, :].sum()
+
+    kmeans = KMeans(n_clusters=num_subgraphs)
+    kmeans.fit(clustering_data)
+
+    clustering_labels = kmeans.labels_
+
+    client_indices = {client_id: [] for client_id in range(num_subgraphs)}
+    
+    for com_id in range(num_communities):
+        client_indices[clustering_labels[com_id]] += communities[com_id]["nodes"]
+
+    return client_indices
 
 def drichlet_cut(labels, num_nodes, num_subgraphs, num_classes):
     subgraph_node_ids = label_dirichlet_partition(
@@ -361,7 +403,8 @@ def partition_graph(graph: Graph, num_subgraphs, method="random"):
         subgraph_node_ids = kmeans_cut(graph.x, num_subgraphs)
     elif method == "metis":
         subgraph_node_ids = metis_cut(graph.edge_index, graph.num_nodes, num_subgraphs)
-
+    elif method == "metis_plus":
+        subgraph_node_ids = metis_plus_cut(graph.edge_index, graph.num_nodes, num_subgraphs, graph.num_classes, graph.y)
     subgraphs = create_subgraps(graph, subgraph_node_ids)
 
     return subgraphs

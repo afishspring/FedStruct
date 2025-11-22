@@ -43,73 +43,80 @@ def set_up_system():
         graph, config.subgraph.num_subgraphs, config.subgraph.partitioning
     )
 
-    # # [START - 新增的绘图代码]
-    # try:
-    #     LOGGER.info("Generating label distribution plot...")
-    #     output_dir = "figures/"
-    #     os.makedirs(output_dir, exist_ok=True)
+    g_hom = homophilic(graph)
+    sg_homs = np.array([homophilic(subgraph) for subgraph in subgraphs])
+    LOGGER.info(f"Graph homophily: {g_hom:.4f}")
+    for i, sg_hom in enumerate(sg_homs):
+        LOGGER.info(f"Subgraph {i} homophily: {sg_hom:.4f}")
+    print(f"Avg homophily: {sg_homs.mean():.4f}, Std homophily: {sg_homs.var():.4f}")
+
+    # [START - 新增的绘图代码]
+    try:
+        LOGGER.info("Generating label distribution plot...")
+        output_dir = "figures/"
+        os.makedirs(output_dir, exist_ok=True)
         
-    #     num_subgraphs = len(subgraphs)
-    #     num_classes = graph.num_classes
+        num_subgraphs = len(subgraphs)
+        num_classes = graph.num_classes
         
-    #     # 收集每个子图的标签计数
-    #     all_counts = []
-    #     for subgraph in subgraphs:
-    #         labels = subgraph.y.numpy()  # 转到CPU和Numpy以便bincount
-    #         if len(labels) > 0:
-    #             # 确保bincount的长度至少为num_classes
-    #             counts = np.bincount(labels, minlength=num_classes)
-    #         else:
-    #             # 处理空子图
-    #             counts = np.zeros(num_classes, dtype=int)
-    #         all_counts.append(counts)
+        # 收集每个子图的标签计数
+        all_counts = []
+        for subgraph in subgraphs:
+            labels = subgraph.y.numpy()  # 转到CPU和Numpy以便bincount
+            if len(labels) > 0:
+                # 确保bincount的长度至少为num_classes
+                counts = np.bincount(labels, minlength=num_classes)
+            else:
+                # 处理空子图
+                counts = np.zeros(num_classes, dtype=int)
+            all_counts.append(counts)
         
-    #     # 转换为Numpy数组 (num_subgraphs, num_classes)
-    #     distributions = np.array(all_counts)
+        # 转换为Numpy数组 (num_subgraphs, num_classes)
+        distributions = np.array(all_counts)
         
-    #     # --- 创建堆叠条形图 ---
-    #     fig, ax = plt.subplots(figsize=(16, 9))
-    #     subgraph_indices = np.arange(num_subgraphs)
-    #     bottoms = np.zeros(num_subgraphs)
+        # --- 创建堆叠条形图 ---
+        fig, ax = plt.subplots(figsize=(16, 9))
+        subgraph_indices = np.arange(num_subgraphs)
+        bottoms = np.zeros(num_subgraphs)
         
-    #     # 使用一个颜色映射表
-    #     colors = plt.cm.get_cmap('gist_rainbow', num_classes)
+        # 使用一个颜色映射表
+        colors = plt.cm.get_cmap('gist_rainbow', num_classes)
         
-    #     for i in range(num_classes):
-    #         counts_for_class_i = distributions[:, i]
-    #         ax.bar(
-    #             subgraph_indices, 
-    #             counts_for_class_i, 
-    #             bottom=bottoms, 
-    #             label=f'Class {i}', 
-    #             color=colors(i / num_classes) # 为每个类别应用不同颜色
-    #         )
-    #         bottoms += counts_for_class_i
+        for i in range(num_classes):
+            counts_for_class_i = distributions[:, i]
+            ax.bar(
+                subgraph_indices, 
+                counts_for_class_i, 
+                bottom=bottoms, 
+                label=f'Class {i}', 
+                color=colors(i / num_classes) # 为每个类别应用不同颜色
+            )
+            bottoms += counts_for_class_i
             
-    #     ax.set_xlabel('Subgraph ID')
-    #     ax.set_ylabel('Number of Nodes')
-    #     ax.set_title(f'Label Distribution across {num_subgraphs} Subgraphs ({config.dataset.dataset_name}, {config.subgraph.partitioning} partitioning)')
-    #     ax.set_xticks(subgraph_indices) # 确保每个子图都有一个刻度
-    #     ax.set_xticklabels([str(i) for i in subgraph_indices])
+        ax.set_xlabel('Subgraph ID')
+        ax.set_ylabel('Number of Nodes')
+        ax.set_title(f'Label Distribution across {num_subgraphs} Subgraphs ({config.dataset.dataset_name}, {config.subgraph.partitioning} partitioning)')
+        ax.set_xticks(subgraph_indices) # 确保每个子图都有一个刻度
+        ax.set_xticklabels([str(i) for i in subgraph_indices])
         
-    #     # 将图例放在图表外部
-    #     ax.legend(title='Class', bbox_to_anchor=(1.04, 1), loc='upper left')
+        # 将图例放在图表外部
+        ax.legend(title='Class', bbox_to_anchor=(1.04, 1), loc='upper left')
         
-    #     ax.grid(axis='y', linestyle='--', alpha=0.7)
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
         
-    #     # 调整布局以便图例能完整显示
-    #     plt.tight_layout(rect=[0, 0, 0.85, 1]) 
+        # 调整布局以便图例能完整显示
+        plt.tight_layout(rect=[0, 0, 0.85, 1]) 
         
-    #     # 保存图像
-    #     plot_filename = f"label_dist_{config.dataset.dataset_name}_{config.subgraph.partitioning}_{num_subgraphs}subgraphs_{now}.png"
-    #     save_file_path = os.path.join(output_dir, plot_filename)
-    #     plt.savefig(save_file_path)
-    #     LOGGER.info(f"Saved label distribution plot to {save_file_path}")
-    #     plt.close(fig)  # 关闭图像，释放内存
+        # 保存图像
+        plot_filename = f"label_dist_{config.dataset.dataset_name}_{config.subgraph.partitioning}_{num_subgraphs}subgraphs_{now}.png"
+        save_file_path = os.path.join(output_dir, plot_filename)
+        plt.savefig(save_file_path)
+        LOGGER.info(f"Saved label distribution plot to {save_file_path}")
+        plt.close(fig)  # 关闭图像，释放内存
         
-    # except Exception as e:
-    #     LOGGER.error(f"Failed to generate label distribution plot: {e}")
-    # # [END - 新增的绘图代码]
+    except Exception as e:
+        LOGGER.error(f"Failed to generate label distribution plot: {e}")
+    # [END - 新增的绘图代码]
 
     # MLP_server = MLPServer(graph)
     # for subgraph in subgraphs:

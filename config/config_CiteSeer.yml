@@ -6,7 +6,7 @@ subgraph:
   delta: 20
   train_ratio: 0.1
   test_ratio: 0.8
-  partitioning: random
+  partitioning: metis_plus
   prune: False
   pruning_th: 30
 model:

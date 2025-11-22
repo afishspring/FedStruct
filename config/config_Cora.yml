@@ -6,7 +6,7 @@ subgraph:
   delta: 20
   train_ratio: 0.1
   test_ratio: 0.8
-  partitioning: random
+  partitioning: louvain
   prune: False
   pruning_th: 30
 model:
@@ -18,7 +18,7 @@ model:
   weight_decay: 0.0005
   dropout: 0.75
   gnn_layer_type: sage
-  smodel_type: LanczosLaplace   # GNN, DGCN, CentralDGCN, Laplace, LanczosLaplace, SpectralLaplace, SpectralDGCN, LanczosDGCN
+  smodel_type: DGCN   # GNN, DGCN, CentralDGCN, Laplace, LanczosLaplace, SpectralLaplace, SpectralDGCN, LanczosDGCN
   fmodel_type: same   #GNN, DGCN, same
   iterations: 50
   metric: acc

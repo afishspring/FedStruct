@@ -22,13 +22,13 @@ class Client:
         self.classifier: Classifier = None
 
     def to_cuda(self):
-        self.graph.node_ids = self.graph.node_ids.to(dev)
-        self.graph.x = self.graph.x.to(dev)
-        self.graph.y = self.graph.y.to(dev)
-        self.graph.edge_index = self.graph.edge_index.to(dev)
-        self.graph.train_mask = self.graph.train_mask.to(dev)
-        self.graph.val_mask = self.graph.val_mask.to(dev)
-        self.graph.test_mask = self.graph.test_mask.to(dev)
+        self.graph.node_ids = self.graph.node_ids.to(device)
+        self.graph.x = self.graph.x.to(device)
+        self.graph.y = self.graph.y.to(device)
+        self.graph.edge_index = self.graph.edge_index.to(device)
+        self.graph.train_mask = self.graph.train_mask.to(device)
+        self.graph.val_mask = self.graph.val_mask.to(device)
+        self.graph.test_mask = self.graph.test_mask.to(device)\
 
     def get_nodes(self):
         return self.graph.node_ids

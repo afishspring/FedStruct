@@ -90,6 +90,8 @@ def calc_f1_score(pred_y, y):
 
 @torch.no_grad()
 def calc_auc(pred_y, y):
+    if len(torch.unique(y)) <= 1:
+        return -1.0
     auc = roc_auc_score(
         y.detach().cpu().numpy(),
         pred_y.detach().cpu().numpy(),
@@ -494,16 +496,17 @@ def split_abar(abar: SparseTensor, nodes):
     num_nodes = abar.size()[0]
     # nodes = self.get_nodes().to(local_dev)
     num_nodes_i = len(nodes)
-    indices = torch.arange(num_nodes_i, dtype=torch.long)
-    vals = torch.ones(num_nodes_i, dtype=torch.float32)
+    indices = torch.arange(num_nodes_i, dtype=torch.long, device=abar.device)
+    vals = torch.ones(num_nodes_i, dtype=torch.float32, device=abar.device)
     P = torch.sparse_coo_tensor(
         torch.vstack([indices, nodes]),
         vals,
         (num_nodes_i, num_nodes),
+        device=abar.device,
     )
-    abar_i = torch.matmul(P, abar).to(local_dev)
+    abar_i = torch.matmul(P, abar)
     if dev != "cuda:0":
-        abar_i = abar_i.to_dense()
+        abar_i = abar_i.to_dense().to(dev)
     return abar_i
 
 
@@ -678,3 +681,12 @@ def sum_lod(x: List, coef=None):
         return z
     else:
         return sum([weight * val for weight, val in zip(coef, x)])
+
+def homophilic(graph):
+    edge_index = graph.edge_index
+    y = graph.y
+    same_label = 0
+    for i in range(edge_index.shape[1]):
+        if y[edge_index[0, i]] == y[edge_index[1, i]]:
+            same_label += 1
+    return same_label / edge_index.shape[1]
